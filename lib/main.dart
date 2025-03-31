@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(AquariumApp());
@@ -45,6 +44,7 @@ class _AquariumScreenState extends State<AquariumScreen>
       vsync: this,
     )..addListener(_updateFishPositions);
     _controller.repeat();
+    _loadFishCount();
   }
 
   void _updateFishPositions() {
@@ -60,6 +60,23 @@ class _AquariumScreenState extends State<AquariumScreen>
     });
   }
 
+  Future<void> _saveFishCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('fishCount', fishList.length);
+  }
+
+  Future<void> _loadFishCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    int? fishCount = prefs.getInt('fishCount') ?? 0;
+    setState(() {
+      fishList = List.generate(fishCount, (index) => Fish(
+        color: selectedColor,
+        speed: selectedSpeed,
+        position: Offset(random.nextDouble() * 300, random.nextDouble() * 300),
+      ));
+    });
+  }
+
   void _addFish() {
     if (fishList.length < 10) {
       setState(() {
@@ -69,7 +86,15 @@ class _AquariumScreenState extends State<AquariumScreen>
           position: Offset(random.nextDouble() * 300, random.nextDouble() * 300),
         ));
       });
+      _saveFishCount();
     }
+  }
+
+  void _removeFish(Fish fish) {
+    setState(() {
+      fishList.remove(fish);
+    });
+    _saveFishCount();
   }
 
   @override
@@ -87,12 +112,15 @@ class _AquariumScreenState extends State<AquariumScreen>
                   .map((fish) => Positioned(
                 left: fish.position.dx,
                 top: fish.position.dy,
-                child: Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: fish.color,
-                    shape: BoxShape.circle,
+                child: GestureDetector(
+                  onTap: () => _removeFish(fish),
+                  child: Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: fish.color,
+                      shape: BoxShape.circle,
+                    ),
                   ),
                 ),
               ))
